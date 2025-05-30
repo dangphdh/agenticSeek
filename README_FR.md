@@ -3,7 +3,7 @@
 <p>
 
 --------------------------------------------------------------------------------
-[English](./README.md) | [繁體中文](./README_CHT.md) | [日本語](./README_JP.md) | Français
+[English](./README.md) | [繁體中文](./README_CHT.md) | [日本語](./README_JP.md) | Français| [日本語](./README_JP.md) | [Português (Brasil)](./README_PTBR.md)
 
 # AgenticSeek: Une IA comme Manus mais à base d'agents DeepSeek R1 fonctionnant en local.
 
@@ -495,4 +495,4 @@ Nous recherchons des développeurs pour améliorer AgenticSeek ! Consultez la se
 ## Mainteneurs:
  > [Fosowl](https://github.com/Fosowl)
  > [steveh8758](https://github.com/steveh8758)
- > [https://github.com/antoineVIVIES](https://github.com/antoineVIVIES)
+ > [antoineVIVIES](https://github.com/antoineVIVIES) | Taipei Time 

@@ -4,7 +4,7 @@
 <img align="center" src="./media/whale_readme.jpg">
 <p>
 
-[English](./README.md) | 中文 | [日本語](./README_JP.md)
+[English](./README.md) | 中文 | [日本語](./README_JP.md) | [Português (Brasil)](./README_PTBR.md)
 
 *一个 **100% 本地替代 Manus AI** 的方案，这款支持语音的 AI 助理能够自主浏览网页、编写代码和规划任务，同时将所有数据保留在您的设备上。专为本地推理模型量身打造，完全在您自己的硬件上运行，确保完全的隐私保护和零云端依赖。*
 
@@ -564,8 +564,8 @@ DeepSeek R1 天生会说中文
 
 ## 维护者:
 
- > [Fosowl](https://github.com/Fosowl) | 巴黎时间 | （有时很忙）
+ > [Fosowl](https://github.com/Fosowl) | 巴黎时间
 
- > [https://github.com/antoineVIVIES](https://github.com/antoineVIVIES) | 台北时间 | （经常很忙）
+ > [antoineVIVIES](https://github.com/antoineVIVIES) | Taipei Time 
 
- > [steveh8758](https://github.com/steveh8758) | 台北时间 | （总是很忙）
+ > [steveh8758](https://github.com/steveh8758) | 台北时间
