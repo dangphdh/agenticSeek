@@ -1,0 +1,301 @@
+# Default values for agenticseek.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Global settings
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: ""
+
+# Image pull secrets
+imagePullSecrets: []
+
+# Backend service configuration
+backend:
+  replicaCount: 2
+  
+  image:
+    repository: agenticseek-backend
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 7777
+    targetPort: 7777
+  
+  # Environment variables
+  env:
+    SEARXNG_URL: "http://agenticseek-searxng:8080"
+    REDIS_URL: "redis://agenticseek-redis:6379/0"
+    DEPLOYMENT_MODE: "cloud"
+    CLOUD_PROVIDER: ""
+    LOG_LEVEL: "INFO"
+    ENABLE_MONITORING: "true"
+  
+  # Resource limits and requests
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+  
+  # Autoscaling
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  
+  # Pod security context
+  podSecurityContext:
+    fsGroup: 2000
+  
+  # Security context for the container
+  securityContext:
+    capabilities:
+      drop:
+      - ALL
+    readOnlyRootFilesystem: false
+    runAsNonRoot: true
+    runAsUser: 1000
+  
+  # Node selector
+  nodeSelector: {}
+  
+  # Tolerations
+  tolerations: []
+  
+  # Affinity
+  affinity: {}
+
+# Frontend service configuration
+frontend:
+  replicaCount: 2
+  
+  image:
+    repository: agenticseek-frontend
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 3000
+  
+  # Environment variables
+  env:
+    REACT_APP_BACKEND_URL: "http://agenticseek-backend:7777"
+  
+  # Resource limits and requests
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  
+  # Autoscaling
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+  
+  # Pod security context
+  podSecurityContext:
+    fsGroup: 2000
+  
+  # Security context for the container
+  securityContext:
+    capabilities:
+      drop:
+      - ALL
+    readOnlyRootFilesystem: false
+    runAsNonRoot: true
+    runAsUser: 1000
+  
+  # Node selector
+  nodeSelector: {}
+  
+  # Tolerations
+  tolerations: []
+  
+  # Affinity
+  affinity: {}
+
+# SearXNG configuration
+searxng:
+  replicaCount: 1
+  
+  image:
+    repository: searxng/searxng
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 8080
+  
+  # Base URL for SearXNG
+  baseUrl: "http://localhost:8080"
+  
+  # Security context for the pod
+  podSecurityContext:
+    fsGroup: 977
+  
+  # Security context for the container
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 977
+    runAsGroup: 977
+    capabilities:
+      drop:
+      - ALL
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+  
+  # Resource limits and requests
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  
+  # Node selector
+  nodeSelector: {}
+  
+  # Tolerations
+  tolerations: []
+  
+  # Affinity
+  affinity: {}
+
+# Redis configuration
+redis:
+  replicaCount: 1
+  
+  image:
+    repository: redis
+    tag: "7-alpine"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 6379
+  
+  # Authentication configuration
+  auth:
+    enabled: false
+    # password: "" # Set via secret
+  
+  # Persistence configuration
+  persistence:
+    enabled: true
+    accessMode: ReadWriteOnce
+    size: 1Gi
+    storageClass: ""
+  
+  # Security context for the pod
+  podSecurityContext:
+    fsGroup: 999
+  
+  # Security context for the container
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 999
+    runAsGroup: 999
+    capabilities:
+      drop:
+      - ALL
+    readOnlyRootFilesystem: false
+    allowPrivilegeEscalation: false
+  
+  # Resource limits and requests
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  
+  # Node selector
+  nodeSelector: {}
+  
+  # Tolerations
+  tolerations: []
+  
+  # Affinity
+  affinity: {}
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+  hosts:
+    - host: agenticseek.local
+      paths:
+        - path: /api
+          pathType: Prefix
+          backend: backend
+        - path: /
+          pathType: Prefix
+          backend: frontend
+  tls:
+    - secretName: agenticseek-tls
+      hosts:
+        - agenticseek.local
+
+# Persistence configuration for workspace
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteMany
+  size: 10Gi
+  mountPath: /opt/workspace
+
+# Secrets (base64 encoded)
+secrets:
+  openaiApiKey: ""
+  deepseekApiKey: ""
+  searxngSecretKey: ""
+  anthropicApiKey: ""
+  googleApiKey: ""
+  redisPassword: ""
+
+# Service account configuration
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+# Monitoring
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    path: /metrics
+
+# Network policies
+networkPolicy:
+  enabled: false
+  ingress: []
+  egress: []

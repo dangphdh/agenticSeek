@@ -1,0 +1,118 @@
+# Development Environment Values
+# This configuration is optimized for development and testing
+
+# Global settings
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+
+# Backend configuration
+backend:
+  replicaCount: 1
+  image:
+    repository: agenticseek-backend
+    tag: "dev"
+    pullPolicy: Always
+  
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+  
+  autoscaling:
+    enabled: false
+  
+  env:
+    SEARXNG_URL: "http://agenticseek-searxng:8080"
+    REDIS_URL: "redis://agenticseek-redis:6379/0"
+    DEPLOYMENT_MODE: "development"
+    LOG_LEVEL: "DEBUG"
+    ENABLE_MONITORING: "false"
+
+# Frontend configuration
+frontend:
+  replicaCount: 1
+  image:
+    repository: agenticseek-frontend
+    tag: "dev"
+    pullPolicy: Always
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  
+  autoscaling:
+    enabled: false
+
+# SearXNG configuration
+searxng:
+  replicaCount: 1
+  baseUrl: "http://agenticseek-dev.local:8080"
+  
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Redis configuration
+redis:
+  replicaCount: 1
+  auth:
+    enabled: false
+  persistence:
+    enabled: false  # Use emptyDir for development
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+  hosts:
+    - host: agenticseek-dev.local
+      paths:
+        - path: /api
+          pathType: Prefix
+          backend: backend
+        - path: /
+          pathType: Prefix
+          backend: frontend
+  tls: []  # No TLS for development
+
+# Persistence (disabled for development)
+persistence:
+  enabled: false
+
+# Secrets (empty for development - use environment variables)
+secrets:
+  openaiApiKey: ""
+  deepseekApiKey: ""
+  searxngSecretKey: "dev-secret-key"
+  anthropicApiKey: ""
+  googleApiKey: ""
+
+# Monitoring (disabled for development)
+monitoring:
+  enabled: false
+
+# Network policies (disabled for development)
+networkPolicy:
+  enabled: false

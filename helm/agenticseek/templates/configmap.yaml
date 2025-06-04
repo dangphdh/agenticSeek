@@ -1,0 +1,100 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "agenticseek.fullname" . }}-configmap
+  labels:
+    {{- include "agenticseek.labels" . | nindent 4 }}
+data:
+  # Backend environment variables
+  SEARXNG_URL: {{ .Values.backend.env.SEARXNG_URL | quote }}
+  REDIS_URL: {{ .Values.backend.env.REDIS_URL | quote }}
+  DEPLOYMENT_MODE: {{ .Values.backend.env.DEPLOYMENT_MODE | quote }}
+  CLOUD_PROVIDER: {{ .Values.backend.env.CLOUD_PROVIDER | quote }}
+  LOG_LEVEL: {{ .Values.backend.env.LOG_LEVEL | quote }}
+  ENABLE_MONITORING: {{ .Values.backend.env.ENABLE_MONITORING | quote }}
+  
+  # Frontend environment variables
+  REACT_APP_BACKEND_URL: {{ .Values.frontend.env.REACT_APP_BACKEND_URL | quote }}
+  
+  # SearXNG configuration
+  searxng-settings: |
+    general:
+      debug: false
+      instance_name: "AgenticSeek Search"
+      contact_url: ""
+      enable_metrics: true
+    
+    search:
+      safe_search: 1
+      autocomplete: "google"
+      default_lang: "auto"
+      ban_time_on_fail: 5
+      max_ban_time_on_fail: 120
+    
+    server:
+      port: 8080
+      bind_address: "0.0.0.0"
+      secret_key: "{{ .Values.secrets.searxngSecretKey }}"
+      limiter: true
+      public_instance: false
+    
+    ui:
+      static_use_hash: true
+      default_theme: simple
+      default_locale: ""
+      theme_args:
+        simple_style: auto
+    
+    redis:
+      url: {{ .Values.backend.env.REDIS_URL | quote }}
+    
+    outgoing:
+      request_timeout: 3.0
+      max_request_timeout: 15.0
+      useragent_suffix: "AgenticSeek/1.0"
+      pool_connections: 10
+      pool_maxsize: 20
+      enable_http2: true
+    
+    engines:
+      - name: google
+        engine: google
+        use_mobile_ui: false
+        
+      - name: bing
+        engine: bing
+        
+      - name: duckduckgo
+        engine: duckduckgo
+        
+      - name: wikipedia
+        engine: wikipedia
+        
+      - name: arxiv
+        engine: arxiv
+        categories: science
+        
+      - name: github
+        engine: github
+        categories: it
+        
+      - name: stackoverflow
+        engine: stackoverflow
+        categories: it
+  
+  {{- if .Values.redis.auth.enabled }}
+  # Redis configuration
+  redis-conf: |
+    bind 0.0.0.0
+    port 6379
+    requirepass {{ .Values.secrets.redisPassword }}
+    appendonly yes
+    appendfsync everysec
+    save 900 1
+    save 300 10
+    save 60 10000
+    maxmemory 256mb
+    maxmemory-policy allkeys-lru
+    tcp-keepalive 60
+    timeout 300
+  {{- end }}

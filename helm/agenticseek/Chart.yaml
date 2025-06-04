@@ -1,0 +1,21 @@
+apiVersion: v2
+name: agenticseek
+description: A Helm chart for AgenticSeek - Private, Local AI Assistant
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - ai
+  - assistant
+  - privacy
+  - local
+home: https://fosowl.github.io/agenticSeek.html
+sources:
+  - https://github.com/Fosowl/agenticSeek
+maintainers:
+  - name: Fosowl
+    url: https://github.com/Fosowl
+  - name: antoineVIVIES
+    url: https://github.com/antoineVIVIES
+  - name: steveh8758
+    url: https://github.com/steveh8758

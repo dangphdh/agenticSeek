@@ -1,0 +1,32 @@
+{{- if and .Values.monitoring.enabled .Values.monitoring.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "agenticseek.fullname" . }}-backend
+  labels:
+    {{- include "agenticseek.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  selector:
+    matchLabels:
+      {{- include "agenticseek.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+  endpoints:
+    - port: http
+      path: {{ .Values.monitoring.serviceMonitor.path }}
+      interval: {{ .Values.monitoring.serviceMonitor.interval }}
+      {{- if .Values.monitoring.serviceMonitor.scrapeTimeout }}
+      scrapeTimeout: {{ .Values.monitoring.serviceMonitor.scrapeTimeout }}
+      {{- end }}
+      {{- if .Values.monitoring.serviceMonitor.honorLabels }}
+      honorLabels: {{ .Values.monitoring.serviceMonitor.honorLabels }}
+      {{- end }}
+      {{- if .Values.monitoring.serviceMonitor.metricRelabelings }}
+      metricRelabelings:
+        {{- toYaml .Values.monitoring.serviceMonitor.metricRelabelings | nindent 8 }}
+      {{- end }}
+      {{- if .Values.monitoring.serviceMonitor.relabelings }}
+      relabelings:
+        {{- toYaml .Values.monitoring.serviceMonitor.relabelings | nindent 8 }}
+      {{- end }}
+{{- end }}

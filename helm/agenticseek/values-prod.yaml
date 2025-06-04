@@ -1,0 +1,237 @@
+# Production Environment Values
+# This configuration is optimized for production deployments
+
+# Global settings
+global:
+  imageRegistry: "your-registry.com"
+  imagePullSecrets:
+    - name: registry-secret
+
+# Backend configuration
+backend:
+  replicaCount: 3
+  image:
+    repository: agenticseek-backend
+    tag: "v1.0.0"
+    pullPolicy: IfNotPresent
+  
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  
+  env:
+    SEARXNG_URL: "http://agenticseek-searxng:8080"
+    REDIS_URL: "redis://agenticseek-redis:6379/0"
+    DEPLOYMENT_MODE: "production"
+    LOG_LEVEL: "INFO"
+    ENABLE_MONITORING: "true"
+  
+  # Production security context
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 2000
+    seccompProfile:
+      type: RuntimeDefault
+  
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 1000
+    capabilities:
+      drop:
+        - ALL
+
+# Frontend configuration
+frontend:
+  replicaCount: 2
+  image:
+    repository: agenticseek-frontend
+    tag: "v1.0.0"
+    pullPolicy: IfNotPresent
+  
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+  
+  # Production security context
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 2000
+    seccompProfile:
+      type: RuntimeDefault
+  
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 1000
+    capabilities:
+      drop:
+        - ALL
+
+# SearXNG configuration
+searxng:
+  replicaCount: 2
+  baseUrl: "https://agenticseek.yourdomain.com"
+  
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  
+  # High availability with anti-affinity
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/component
+              operator: In
+              values:
+              - searxng
+          topologyKey: kubernetes.io/hostname
+
+# Redis configuration
+redis:
+  replicaCount: 1
+  auth:
+    enabled: true
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: "ssd-fast"
+  
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+  hosts:
+    - host: agenticseek.yourdomain.com
+      paths:
+        - path: /api
+          pathType: Prefix
+          backend: backend
+        - path: /
+          pathType: Prefix
+          backend: frontend
+  tls:
+    - secretName: agenticseek-tls
+      hosts:
+        - agenticseek.yourdomain.com
+
+# Persistence configuration
+persistence:
+  enabled: true
+  storageClass: "ssd-fast"
+  accessMode: ReadWriteMany
+  size: 50Gi
+
+# Secrets (these should be set via CI/CD or external secret management)
+secrets:
+  openaiApiKey: ""  # Set via external secret management
+  deepseekApiKey: ""  # Set via external secret management
+  searxngSecretKey: ""  # Generated automatically if not set
+  anthropicApiKey: ""  # Set via external secret management
+  googleApiKey: ""  # Set via external secret management
+  redisPassword: ""  # Generated automatically if not set
+
+# Service account with specific permissions
+serviceAccount:
+  create: true
+  annotations:
+    # Add any cloud-specific annotations here
+    # eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/agenticseek-role
+  name: "agenticseek"
+
+# Monitoring enabled for production
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    path: /metrics
+    scrapeTimeout: 10s
+    honorLabels: true
+
+# Network policies for security
+networkPolicy:
+  enabled: true
+  ingress:
+    # Allow traffic from monitoring namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 7777
+  egress: []
+
+# Pod disruption budgets for high availability
+podDisruptionBudget:
+  backend:
+    enabled: true
+    minAvailable: 2
+  frontend:
+    enabled: true
+    minAvailable: 1
+
+# Additional labels for production
+commonLabels:
+  environment: production
+  team: ai-platform
+  version: v1.0.0
+
+# Resource quotas
+resourceQuotas:
+  enabled: true
+  hard:
+    requests.cpu: "10"
+    requests.memory: "20Gi"
+    limits.cpu: "20"
+    limits.memory: "40Gi"
+    persistentvolumeclaims: "10"

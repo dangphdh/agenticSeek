@@ -1,0 +1,235 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "agenticseek.fullname" . }}-backend
+  labels:
+    {{- include "agenticseek.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "agenticseek.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow traffic from frontend
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "agenticseek.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: frontend
+      ports:
+        - protocol: TCP
+          port: 7777
+    # Allow traffic from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 7777
+    {{- if .Values.networkPolicy.ingress }}
+    # Custom ingress rules
+    {{- toYaml .Values.networkPolicy.ingress | nindent 4 }}
+    {{- end }}
+  egress:
+    # Allow DNS resolution
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Allow access to SearXNG
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "agenticseek.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: searxng
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow access to Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "agenticseek.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    # Allow HTTPS for external API calls
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 80
+    {{- if .Values.networkPolicy.egress }}
+    # Custom egress rules
+    {{- toYaml .Values.networkPolicy.egress | nindent 4 }}
+    {{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "agenticseek.fullname" . }}-frontend
+  labels:
+    {{- include "agenticseek.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "agenticseek.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: frontend
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow traffic from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 3000
+    {{- if .Values.networkPolicy.ingress }}
+    # Custom ingress rules
+    {{- toYaml .Values.networkPolicy.ingress | nindent 4 }}
+    {{- end }}
+  egress:
+    # Allow DNS resolution
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Allow access to backend
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "agenticseek.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: backend
+      ports:
+        - protocol: TCP
+          port: 7777
+    {{- if .Values.networkPolicy.egress }}
+    # Custom egress rules
+    {{- toYaml .Values.networkPolicy.egress | nindent 4 }}
+    {{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "agenticseek.fullname" . }}-searxng
+  labels:
+    {{- include "agenticseek.labels" . | nindent 4 }}
+    app.kubernetes.io/component: searxng
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "agenticseek.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: searxng
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow traffic from backend
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "agenticseek.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: backend
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- if .Values.networkPolicy.ingress }}
+    # Custom ingress rules
+    {{- toYaml .Values.networkPolicy.ingress | nindent 4 }}
+    {{- end }}
+  egress:
+    # Allow DNS resolution
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Allow access to Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "agenticseek.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    # Allow HTTPS for search engines
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 80
+    {{- if .Values.networkPolicy.egress }}
+    # Custom egress rules
+    {{- toYaml .Values.networkPolicy.egress | nindent 4 }}
+    {{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "agenticseek.fullname" . }}-redis
+  labels:
+    {{- include "agenticseek.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "agenticseek.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: redis
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow traffic from backend
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "agenticseek.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: backend
+      ports:
+        - protocol: TCP
+          port: 6379
+    # Allow traffic from SearXNG
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "agenticseek.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: searxng
+      ports:
+        - protocol: TCP
+          port: 6379
+    {{- if .Values.networkPolicy.ingress }}
+    # Custom ingress rules
+    {{- toYaml .Values.networkPolicy.ingress | nindent 4 }}
+    {{- end }}
+  egress:
+    # Allow DNS resolution
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    {{- if .Values.networkPolicy.egress }}
+    # Custom egress rules
+    {{- toYaml .Values.networkPolicy.egress | nindent 4 }}
+    {{- end }}
+{{- end }}
