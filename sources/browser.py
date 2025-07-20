@@ -80,18 +80,36 @@ def install_chromedriver() -> str:
     """
     Install the ChromeDriver if not already installed. Return the path.
     """
+    # First try to use chromedriver in the project root directory (as per README)
+    project_root_chromedriver = "./chromedriver"
+    if os.path.exists(project_root_chromedriver) and os.access(project_root_chromedriver, os.X_OK):
+        print(f"Using ChromeDriver from project root: {project_root_chromedriver}")
+        return project_root_chromedriver
+    
+    # Then try to use the system-installed chromedriver
     chromedriver_path = shutil.which("chromedriver")
-    if not chromedriver_path:
-        try:
-            print("ChromeDriver not found, attempting to install automatically...")
-            chromedriver_path = chromedriver_autoinstaller.install()
-        except Exception as e:
-            raise FileNotFoundError(
-                "ChromeDriver not found and could not be installed automatically. "
-                "Please install it manually from https://chromedriver.chromium.org/downloads."
-                "and ensure it's in your PATH or specify the path directly."
-                "See know issues in readme if your chrome version is above 115."
-            ) from e
+    if chromedriver_path:
+        return chromedriver_path
+    
+    # In Docker environment, try the fixed path
+    if os.path.exists('/.dockerenv'):
+        docker_chromedriver_path = "/usr/local/bin/chromedriver"
+        if os.path.exists(docker_chromedriver_path) and os.access(docker_chromedriver_path, os.X_OK):
+            print(f"Using Docker ChromeDriver at {docker_chromedriver_path}")
+            return docker_chromedriver_path
+    
+    # Fallback to auto-installer only if no other option works
+    try:
+        print("ChromeDriver not found, attempting to install automatically...")
+        chromedriver_path = chromedriver_autoinstaller.install()
+    except Exception as e:
+        raise FileNotFoundError(
+            "ChromeDriver not found and could not be installed automatically. "
+            "Please install it manually from https://chromedriver.chromium.org/downloads."
+            "and ensure it's in your PATH or specify the path directly."
+            "See know issues in readme if your chrome version is above 115."
+        ) from e
+    
     if not chromedriver_path:
         raise FileNotFoundError("ChromeDriver not found. Please install it or add it to your PATH.")
     return chromedriver_path
@@ -121,6 +139,11 @@ def create_undetected_chromedriver(service, chrome_options) -> webdriver.Chrome:
 
 def create_driver(headless=False, stealth_mode=True, crx_path="./crx/nopecha.crx", lang="en") -> webdriver.Chrome:
     """Create a Chrome WebDriver with specified options."""
+    # Warn if trying to run non-headless in Docker
+    if not headless and os.path.exists('/.dockerenv'):
+        print("[WARNING] Running non-headless browser in Docker may fail!")
+        print("[WARNING] Consider setting headless=True or headless_browser=True in config.ini")
+    
     chrome_options = Options()
     chrome_path = get_chrome_path()
     

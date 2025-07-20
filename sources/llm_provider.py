@@ -36,6 +36,7 @@ class Provider:
         }
         self.logger = Logger("provider.log")
         self.api_key = None
+        self.internal_url, self.in_docker = self.get_internal_url()
         self.unsafe_providers = ["openai", "deepseek", "dsk_deepseek", "together", "google", "openrouter"]
         if self.provider_name not in self.available_providers:
             raise ValueError(f"Unknown provider: {provider_name}")
@@ -56,6 +57,13 @@ class Provider:
             pretty_print(f"API key {api_key_var} not found in .env file. Please add it", color="warning")
             exit(1)
         return api_key
+    
+    def get_internal_url(self):
+        load_dotenv()
+        url = os.getenv("DOCKER_INTERNAL_URL")
+        if not url: # running on host
+            return "http://localhost", False
+        return url, True
 
     def respond(self, history, verbose=True):
         """
@@ -152,7 +160,7 @@ class Provider:
         Use local or remote Ollama server to generate text.
         """
         thought = ""
-        host = "http://localhost:11434" if self.is_local else f"http://{self.server_address}"
+        host = f"{self.internal_url}:11434" if self.is_local else f"http://{self.server_address}"
         client = OllamaClient(host=host)
 
         try:
@@ -203,7 +211,13 @@ class Provider:
         Use openai to generate text.
         """
         base_url = self.server_ip
-        if self.is_local:
+        if self.is_local and self.in_docker:
+            try:
+                host, port = base_url.split(':')
+            except Exception as e:
+                port = "8000"
+            client = OpenAI(api_key=self.api_key, base_url=f"{self.internal_url}:{port}")
+        elif self.is_local:
             client = OpenAI(api_key=self.api_key, base_url=f"http://{base_url}")
         else:
             client = OpenAI(api_key=self.api_key)
@@ -323,26 +337,56 @@ class Provider:
     def lm_studio_fn(self, history, verbose=False):
         """
         Use local lm-studio server to generate text.
-        lm studio use endpoint /v1/chat/completions not /chat/completions like openai
         """
-        thought = ""
-        route_start = f"{self.server_ip}/v1/chat/completions"
+        if self.in_docker:
+            # Extract port from server_address if present
+            port = "1234"  # default
+            if ":" in self.server_address:
+                port = self.server_address.split(":")[1]
+            url = f"{self.internal_url}:{port}"
+        else:
+            url = f"http://{self.server_ip}"
+        route_start = f"{url}/v1/chat/completions"
         payload = {
             "messages": history,
             "temperature": 0.7,
             "max_tokens": 4096,
             "model": self.model
         }
+
         try:
-            response = requests.post(route_start, json=payload)
-            result = response.json()
+            response = requests.post(route_start, json=payload, timeout=30)
+            if response.status_code != 200:
+                raise Exception(f"LM Studio returned status {response.status_code}: {response.text}")
+            if not response.text.strip():
+                raise Exception("LM Studio returned empty response")
+            try:
+                result = response.json()
+            except ValueError as json_err:
+                raise Exception(f"Invalid JSON from LM Studio: {response.text[:200]}") from json_err
+
             if verbose:
                 print("Response from LM Studio:", result)
-            return result.get("choices", [{}])[0].get("message", {}).get("content", "")
+            choices = result.get("choices", [])
+            if not choices:
+                raise Exception(f"No choices in LM Studio response: {result}")
+
+            message = choices[0].get("message", {})
+            content = message.get("content", "")
+            if not content:
+                raise Exception(f"Empty content in LM Studio response: {result}")
+            return content
+
+        except requests.exceptions.Timeout:
+            raise Exception("LM Studio request timed out - check if server is responsive")
+        except requests.exceptions.ConnectionError:
+            raise Exception(f"Cannot connect to LM Studio at {route_start} - check if server is running")
         except requests.exceptions.RequestException as e:
             raise Exception(f"HTTP request failed: {str(e)}") from e
         except Exception as e:
-            raise Exception(f"An error occurred: {str(e)}") from e
+            if "LM Studio" in str(e):
+                raise  # Re-raise our custom exceptions
+            raise Exception(f"Unexpected error: {str(e)}") from e
         return thought
 
     def openrouter_fn(self, history, verbose=False):
